@@ -313,8 +313,15 @@ globalkeys = awful.util.table.join(
                   mypromptbox[mouse.screen].widget,
                   awful.util.eval, nil,
                   awful.util.getdir("cache") .. "/history_eval")
-              end)
---    awful.key({"Control", "Alt"}   , "l",     function () awful.util.spawn("xscreensaver-command --lock") end)
+              end),
+    awful.key({ "Control", "Mod1"}, "l", function () awful.util.spawn("xscreensaver-command -lock") end),
+    -- Mod1 is Alt
+    awful.key({ }, "XF86AudioLowerVolume",
+      function () awful.util.spawn("/usr/bin/amixer -c 0 -- sset Master playback 4dB-") end),
+    awful.key({ }, "XF86AudioRaiseVolume",
+      function () awful.util.spawn("/usr/bin/amixer -c 0 -- sset Master playback 4dB+") end),
+    awful.key({ }, "XF86AudioMute",
+      function () awful.util.spawn("/usr/bin/amixer -c 0 -- sset Master playback toggle") end)
 )
 
 clientkeys = awful.util.table.join(
@@ -369,9 +376,7 @@ for i = 1, keynumber do
                       if client.focus and tags[client.focus.screen][i] then
                           awful.client.toggletag(tags[client.focus.screen][i])
                       end
-                  end),
-        awful.key({ "Control", "Mod1"}, "l", function () awful.util.spawn("xscreensaver-command -lock") end))
-        -- Mod1 is Alt
+                  end))
 end
 
 clientbuttons = awful.util.table.join(
