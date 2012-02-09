@@ -165,6 +165,44 @@ vicious.register(batwidget, vicious.widgets.bat, " $1 $2% $3", 5, "BAT0")
 --volwidget = widget({ type = "textbox" })
 --vicious.register(volwidget, vicious.widgets.volume, " $1 $2", 20, "Master")
 
+volumecfg = {}
+volumecfg.cardid  = 0
+volumecfg.channel = "Master"
+volumecfg.widget = widget({ type = "textbox", name = "volumecfg.widget", align = "right" })
+-- command must start with a space!
+volumecfg.mixercommand = function (command)
+       local fd = io.popen("amixer -c " .. volumecfg.cardid .. command)
+       local status = fd:read("*all")
+       fd:close()
+       local volume = string.match(status, "(%d?%d?%d)%%")
+       volume = string.format("% 3d", volume)
+       status = string.match(status, "%[(o[^%]]*)%]")
+       if string.find(status, "on", 1, true) then
+               volume = volume .. "%"
+       else
+               volume = volume .. "M"
+       end
+       volumecfg.widget.text = volume
+end
+volumecfg.update = function ()
+       volumecfg.mixercommand(" sget " .. volumecfg.channel)
+end
+volumecfg.up = function ()
+       volumecfg.mixercommand(" sset " .. volumecfg.channel .. " 5%+")
+end
+volumecfg.down = function ()
+       volumecfg.mixercommand(" sset " .. volumecfg.channel .. " 5%-")
+end
+volumecfg.toggle = function ()
+       volumecfg.mixercommand(" sset " .. volumecfg.channel .. " toggle")
+end
+volumecfg.widget:buttons({
+       button({ }, 4, function () volumecfg.up() end),
+       button({ }, 5, function () volumecfg.down() end),
+       button({ }, 1, function () volumecfg.toggle() end)
+})
+volumecfg.update()
+
 -- Create a wibox for each screen and add it
 mywibox = {}
 mypromptbox = {}
@@ -243,6 +281,7 @@ for s = 1, screen.count() do
         weathw,
         separator,
         batwidget,
+        volumecfg.widget,
 --        volwidget,
         mytasklist[s],
         layout = awful.widget.layout.horizontal.rightleft
@@ -317,11 +356,14 @@ globalkeys = awful.util.table.join(
     awful.key({ "Control", "Mod1"}, "l", function () awful.util.spawn("xscreensaver-command -lock") end),
     -- Mod1 is Alt
     awful.key({ }, "XF86AudioLowerVolume",
-      function () awful.util.spawn("/usr/bin/amixer -c 0 -- sset Master playback 4dB-") end),
+      function () volumecfg.down() end),
+--      function () awful.util.spawn("/usr/bin/amixer -c 0 -- sset Master playback 4dB-") end),
     awful.key({ }, "XF86AudioRaiseVolume",
-      function () awful.util.spawn("/usr/bin/amixer -c 0 -- sset Master playback 4dB+") end),
+      function () volumecfg.up() end),
+--      function () awful.util.spawn("/usr/bin/amixer -c 0 -- sset Master playback 4dB+") end),
     awful.key({ }, "XF86AudioMute",
-      function () awful.util.spawn("/usr/bin/amixer -c 0 -- sset Master playback toggle") end)
+      function () volumecfg.toggle() end)
+--      function () awful.util.spawn("/usr/bin/amixer -c 0 -- sset Master playback toggle") end)
 )
 
 clientkeys = awful.util.table.join(
@@ -453,7 +495,11 @@ os.execute("xscreensaver &")
 os.execute("killall nm-applet")
 os.execute("nm-applet --sm-disable &")
 os.execute("/usr/libexec/polkit-gnome-authentication-agent-1 &")
+os.execute("xmodmap ~/.Xmodmap &")
 
 dbus.request_name("session", "org.gnome.SessionManager")
 
+awful.hooks.timer.register(60, function ()
+       volumecfg.update()
+end)
 
